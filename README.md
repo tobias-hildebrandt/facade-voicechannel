@@ -48,8 +48,9 @@ CONFIG=../jitsi-meet-cfg
 - Open another browser tab
 - Try to join same call
 
-## Build and Test Facade
-- `npm build`
+## Build and Run
+- `npm run build`
+- Restart Jitsi container (if `dist/` was deleted and re-made)
 - Navigate to https://localhost:8443/static/test
 
 ## Links
