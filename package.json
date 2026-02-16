@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc && cp src/index.html dist/ && cp -r src/ dist/",
-    "serve": "npm run build && http-server ./dist -c-1 -o",
+    "serve": "npm run build && http-server ./dist -c-1",
     "postinstall": "npm run fix-ljm",
     "fix-ljm": "node src/scripts/fix-ljm.ts"
   },

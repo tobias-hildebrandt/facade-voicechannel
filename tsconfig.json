@@ -6,8 +6,8 @@
     "outDir": "./dist",
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "es2020",
-    "target": "es2024",
+    "module": "esnext",
+    "target": "esnext",
     "jsx": "react",
     "lib": [
       "ES2024",
@@ -41,6 +41,6 @@
     "src/"
   ],
   "exclude": [
-    "src/scripts"
+    "src/scripts",
   ]
 }
