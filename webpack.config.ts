@@ -24,9 +24,10 @@ export default {
         filename: "bundle.js",
         path: path.resolve(__dirname, "dist"),
     },
+    devtool: "inline-source-map",
     plugins: [
         new HtmlWebpackPlugin({
-            template: './src/index.html',
-            minify: 'auto'
+            template: "./src/index.html",
+            minify: "auto"
         })]
 };

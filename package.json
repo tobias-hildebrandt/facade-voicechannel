@@ -5,6 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "webpack",
+    "watch": "webpack watch",
     "serve": "npm run build && http-server ./dist -c-1",
     "postinstall": "npm run fix-ljm",
     "fix-ljm": "node src/scripts/fix-ljm.ts"

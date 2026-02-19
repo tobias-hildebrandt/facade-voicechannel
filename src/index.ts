@@ -1,5 +1,6 @@
-
-/* adapted from https://github.com/jitsi/ljm-getting-started/ */
+/*
+ * main script entry point
+ */
 
 // only `import type` allowed from jitsi
 import type JitsiConference from "JitsiConference";
@@ -8,215 +9,228 @@ import type JitsiLocalTrack from "modules/RTC/JitsiLocalTrack";
 import type JitsiRemoteTrack from "modules/RTC/JitsiRemoteTrack";
 import type { EventListener } from "modules/util/EventEmitter";
 
-interface State {
-  room: string,
-  connection: JitsiConnection | undefined,
-  conference: JitsiConference | undefined,
-  tracks: JitsiLocalTrack[] | undefined
-}
+import { getElement, type Nullable } from "./utils";
 
-const state: State = {
-  room: 'aaa',
-  conference: undefined,
-  connection: undefined,
-  tracks: undefined,
-};
+const DEFAULT_ROOM_NAME: string = "testroom123";
 
-const roomInput = getElement<HTMLInputElement>('roomText');
-const joinButton = getElement<HTMLButtonElement>('joinBtn');
-const leaveButton = getElement<HTMLButtonElement>('leaveBtn');
-const initButton = getElement<HTMLButtonElement>('initBtn');
-const meetingGrid = getElement<HTMLDivElement>('meeting-grid');
+class Jitsi {
+  connection: Nullable<JitsiConnection>;
+  conference: Nullable<JitsiConference>;
+  tracks: Nullable<JitsiLocalTrack[]>;
+  room: Nullable<string>;
+  mediaDiv: HTMLDivElement;
 
-function getElement<T extends HTMLElement>(id: string): T {
-  let elem = document.querySelector<T>(`#${id}`);
-  if (elem) {
-    return elem;
-  } else {
-    throw new Error(`element does not exist`);
-  }
-}
-
-function updateJoinForm() {
-  // In a meeting.
-  if (state.conference) {
-    roomInput.disabled = true;
-    joinButton.disabled = true;
-    leaveButton.disabled = false;
-  } else {
-    roomInput.disabled = false;
-    joinButton.disabled = false;
-    leaveButton.disabled = true;
-  }
-}
-
-roomInput.onchange = () => {
-  state.room = roomInput.value.trim();
-  updateJoinForm();
-}
-
-joinButton.onclick = async () => {
-  await connect();
-  updateJoinForm();
-};
-
-leaveButton.onclick = async () => {
-  await leave();
-  updateJoinForm();
-};
-
-initButton.onclick = async () => {
-  const localTracks = await JitsiMeetJS.createLocalTracks({ devices: ['audio', 'video'] });
-  if (localTracks instanceof Error) {
-    throw new Error("unable to create tracks");
+  constructor() {
+    this.conference = null;
+    this.connection = null;
+    this.tracks = null;
+    this.room = null;
+    this.mediaDiv = getElement<HTMLDivElement>("meeting-grid");
   }
 
-  state.tracks = localTracks;
-}
+  async connect(room: string) {
+    // note: IConnectOptions is not correctly typed, so we must use any
+    const connectOptions: any = {
+      bosh: "https://localhost:8443//http-bind",
+      hosts: {
+        domain: "meet.jitsi",
+        muc: "muc.meet.jitsi"
+      },
+      serviceUrl: `wss://localhost:8443//xmpp-websocket?room=${room}`,
+      websocket: "wss://localhost:8443//xmpp-websocket",
+      websocketKeepAliveUrl: `https://localhost:8443//_unlock?room=${room}`,
+      p2p: {
+        enabled: false,
+      }
+    };
 
-const handleTrackAdded: EventListener = (track: JitsiRemoteTrack) => {
-  console.log(`track added: ${track.getId()} of type ${track.getType()}`);
-  if (track.getType() === 'video') {
-    const videoNode = document.createElement('video');
+    console.log(`connection options: ${JSON.stringify(connectOptions, null, 2)}`)
 
-    videoNode.id = track.getId();
-    videoNode.className = 'jitsiTrack col-4 p-1 border border-primary';
-    videoNode.autoplay = true;
-    meetingGrid.appendChild(videoNode);
-    track.attach(videoNode);
-  } else if (!track.isLocal()) {
-    const audioNode = document.createElement('audio');
+    const connection = this.connection = new JitsiMeetJS.JitsiConnection(
+      // TODO: figure out how appId works
+      "",
+      null,
+      //@ts-ignore
+      connectOptions
+    );
 
-    audioNode.id = track.getId();
-    audioNode.className = 'jitsiTrack border border-primary';
-    audioNode.autoplay = true;
-    meetingGrid.appendChild(audioNode);
-    track.attach(audioNode);
-  }
-};
+    connection.addEventListener(
+      JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED,
+      this.onConnectionSuccess);
+    connection.addEventListener(
+      JitsiMeetJS.events.connection.CONNECTION_FAILED,
+      this.onConnectionFailed);
+    connection.addEventListener(
+      JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED,
+      this.onConnectionDisconnected);
 
-const handleTrackRemoved: EventListener = (track: JitsiRemoteTrack) => {
-  track.dispose();
-  document.getElementById(track.getId())?.remove();
-};
+    connection.connect({ name: room });
 
-const onConferenceJoined: EventListener = () => {
-  console.log('conference joined!');
-};
-
-const onConferenceLeft: EventListener = () => {
-  console.log('conference left!');
-};
-
-const onUserJoined: EventListener = id => {
-  console.log('user joined!', id);
-};
-
-const onUserLeft: EventListener = id => {
-  console.log('user left!', id);
-};
-
-const onConnectionSuccess = async () => {
-  console.log("connection success");
-  if (!state.connection) {
-    throw new Error("connection was nullish onConnectionSuccess??");
-  }
-  if (!state.tracks) {
-    throw new Error("local tracks not set!");
+    this.room = room;
   }
 
-  const conference = state.conference = state.connection.initJitsiConference(state.room, state.connection.options);
 
-  for (const track of state.tracks) {
-    await conference.addTrack(track);
+  async leave() {
+    if (this.conference) {
+      await this.conference.dispose();
+    }
+    if (this.connection) {
+      await this.connection.disconnect();
+    }
+
+    this.conference = null;
+    this.connection = null;
   }
 
-  conference.on(
-    JitsiMeetJS.events.conference.TRACK_ADDED,
-    handleTrackAdded);
-  conference.on(
-    JitsiMeetJS.events.conference.TRACK_REMOVED,
-    handleTrackRemoved);
-  conference.on(
-    JitsiMeetJS.events.conference.CONFERENCE_JOINED,
-    onConferenceJoined);
-  conference.on(
-    JitsiMeetJS.events.conference.CONFERENCE_LEFT,
-    onConferenceLeft);
-  conference.on(
-    JitsiMeetJS.events.conference.USER_JOINED,
-    onUserJoined);
-  conference.on(
-    JitsiMeetJS.events.conference.USER_LEFT,
-    onUserLeft);
+  async updateLocalTracks() {
+    // TODO: call "audio" and "video" separately, otherwise it fails???
+    const localTracks = await JitsiMeetJS.createLocalTracks({ devices: ["video"] });
+    if (localTracks instanceof Error) {
+      throw new Error("unable to create tracks");
+    }
+    //let trackNames = localTracks.map((track) => { track.getSourceName() });
+    console.log(`new tracks: ${JSON.stringify(localTracks)}`);
+    this.tracks = localTracks;
+  }
 
-  console.log("conference handlers set");
 
-  conference.join();
+  private handleTrackAdded = (track: JitsiRemoteTrack) => {
+    console.log(`track added: ${track.getId()} of type ${track.getType()}`);
+    if (track.getType() === "video") {
+      const videoNode = document.createElement("video");
 
-  state.conference = conference;
+      videoNode.id = track.getId();
+      videoNode.className = "jitsiTrack col-4 p-1 border border-primary";
+      videoNode.autoplay = true;
+      this.mediaDiv.appendChild(videoNode);
+      track.attach(videoNode);
+    } else if (!track.isLocal()) {
+      const audioNode = document.createElement("audio");
 
-  updateJoinForm();
-}
-
-const onConnectionFailed = () => {
-  console.error('connection failed!');
-};
-
-const onConnectionDisconnected = () => {
-  console.log('connection disconnected!');
-};
-
-async function connect() {
-  const connectOptions: any = {
-    bosh: "https://localhost:8443/http-bind",
-    hosts: {
-      domain: 'meet.jitsi',
-      muc: "muc.meet.jitsi"
-    },
-    serviceUrl: `wss://localhost:8443/xmpp-websocket?room=${state.room}`,
-    websocket: "wss://localhost:8443/xmpp-websocket",
-    websocketKeepAliveUrl: `https://localhost:8443/_unlock?room=${state.room}`,
-    p2p: {
-      enabled: false,
+      audioNode.id = track.getId();
+      audioNode.className = "jitsiTrack border border-primary";
+      audioNode.autoplay = true;
+      this.mediaDiv.appendChild(audioNode);
+      track.attach(audioNode);
     }
   };
-  console.log(`connection options: ${JSON.stringify(connectOptions, null, 2)}`)
-  // @ts-ignore
-  const connection = new JitsiMeetJS.JitsiConnection(state.appId, null, connectOptions);
 
-  connection.addEventListener(
-    JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED,
-    onConnectionSuccess);
-  connection.addEventListener(
-    JitsiMeetJS.events.connection.CONNECTION_FAILED,
-    onConnectionFailed);
-  connection.addEventListener(
-    JitsiMeetJS.events.connection.CONNECTION_DISCONNECTED,
-    onConnectionDisconnected);
+  private handleTrackRemoved: EventListener = (track: JitsiRemoteTrack) => {
+    track.dispose();
+    document.getElementById(track.getId())?.remove();
+  };
 
-  state.connection = connection;
+  private onConferenceJoined: EventListener = () => {
+    console.log("conference joined!");
+  };
 
-  connection.connect({ name: state.room });
+  private onConferenceLeft: EventListener = () => {
+    console.log("conference left!");
+  };
 
-}
+  private onUserJoined: EventListener = id => {
+    console.log("user joined!", id);
+  };
 
-async function leave() {
-  if (state.conference) {
-    await state.conference.dispose();
+  private onUserLeft: EventListener = id => {
+    console.log("user left!", id);
+  };
+
+  private onConnectionSuccess = async () => {
+    console.log("connection success");
+    if (!this.connection) {
+      throw new Error("connection was nullish onConnectionSuccess??");
+    }
+    if (!this.tracks) {
+      throw new Error("local tracks not set!");
+    }
+
+    const conference = this.conference = this.connection.initJitsiConference(this.room, this.connection.options);
+
+    for (const track of this.tracks) {
+      await conference.addTrack(track);
+    }
+
+    conference.on(
+      JitsiMeetJS.events.conference.TRACK_ADDED,
+      this.handleTrackAdded);
+    conference.on(
+      JitsiMeetJS.events.conference.TRACK_REMOVED,
+      this.handleTrackRemoved);
+    conference.on(
+      JitsiMeetJS.events.conference.CONFERENCE_JOINED,
+      this.onConferenceJoined);
+    conference.on(
+      JitsiMeetJS.events.conference.CONFERENCE_LEFT,
+      this.onConferenceLeft);
+    conference.on(
+      JitsiMeetJS.events.conference.USER_JOINED,
+      this.onUserJoined);
+    conference.on(
+      JitsiMeetJS.events.conference.USER_LEFT,
+      this.onUserLeft);
+
+    console.log("conference handlers set");
+
+    conference.join();
   }
-  if (state.connection) {
-    await state.connection.disconnect();
+
+  private onConnectionFailed = () => {
+    console.error("connection failed!");
+  };
+
+  private onConnectionDisconnected = () => {
+    console.log("connection disconnected!");
+  };
+}
+
+
+/**
+ * Input elements.
+ */
+class Inputs {
+  roomInput: HTMLInputElement;
+  initButton: HTMLButtonElement;
+  joinButton: HTMLButtonElement;
+  leaveButton: HTMLButtonElement;
+
+  constructor() {
+    this.roomInput = getElement<HTMLInputElement>("roomText");
+    this.joinButton = getElement<HTMLButtonElement>("joinBtn");
+    this.leaveButton = getElement<HTMLButtonElement>("leaveBtn");
+    this.initButton = getElement<HTMLButtonElement>("initBtn");
   }
 
-  state.conference = undefined;
-  state.connection = undefined;
+  /**
+   * Gets the current room name from the input element or the default
+   */
+  getRoomInput(): string {
+    const room = this.roomInput.value.trim();
+    if (room.length == 0) {
+      return DEFAULT_ROOM_NAME
+    } else {
+      return room;
+    }
+  }
 }
 
-window.onload = async () => {
-  roomInput.innerText = state.room;
-  updateJoinForm();
-}
+window.onload = () => {
+  JitsiMeetJS.init();
+  console.log(`using LJM version ${JitsiMeetJS.version}!`);
 
-JitsiMeetJS.init();
-console.log(`using LJM version ${JitsiMeetJS.version}!`);
+  let jitsi = new Jitsi();
+  let inputs = new Inputs();
+
+  inputs.initButton.onclick = async () => {
+    await jitsi.updateLocalTracks();
+  }
+
+  inputs.joinButton.onclick = async () => {
+    await jitsi.connect(inputs.getRoomInput());
+  }
+
+  inputs.leaveButton.onclick = async () => {
+    await jitsi.leave();
+  }
+
+}
