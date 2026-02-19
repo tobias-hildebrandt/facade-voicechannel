@@ -53,6 +53,9 @@ CONFIG=../jitsi-meet-cfg
 - Restart Jitsi container (if `dist/` was deleted and re-made)
 - Navigate to https://localhost:8443/static/test
 
+## License
+AGPLv3+
+
 ## Links
 - [lib-jitsi-meet](https://github.com/jitsi/lib-jitsi-meet)
   - aka "LJM"
