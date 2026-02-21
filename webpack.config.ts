@@ -29,5 +29,6 @@ export default {
         new HtmlWebpackPlugin({
             template: "./src/index.html",
             minify: "auto"
-        })]
+        })],
+    // TODO: figure out externals
 };

@@ -16,15 +16,6 @@ On Debian: `sudo apt install podman docker-compose`
 - Follow quickstart from https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker
 - Navigate to `jitsi-docker-jitsi-meet-XXXXXX/`
 
-### Bind Facade's ./dist/ as a volume in jitsi-web container
-- In `docker-compose.yml`, merge:
-```yml
-services:
-    web:
-        volumes:
-            <path_to_here>/facade-voicechannel/dist/:/usr/share/jitsi-meet/static/test/:Z
-```
-
 ### Enable localhost advertisement for jitsi-video-bridge
 - In `.env`:
 ```sh
@@ -35,6 +26,17 @@ JVB_ADVERTISE_IPS=127.0.0.1
 - In `.env`:
 ```sh
 CONFIG=../jitsi-meet-cfg
+```
+
+### Bind Facade's ./dist/ as a volume in jitsi-web container
+- Link `dist`:
+  - `ln -s $PWD/dist <your custom cfg dir>/test`
+- In `docker-compose.yml`, merge:
+```yml
+services:
+    web:
+        volumes:
+            <path_to_here>/facade-voicechannel/dist/:/usr/share/jitsi-meet/static/test/:Z
 ```
 
 ### Jitsi container startup/shutdown

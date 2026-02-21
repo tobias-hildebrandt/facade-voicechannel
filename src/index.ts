@@ -32,20 +32,14 @@ class Jitsi {
     this.myStreamElem = getElement<HTMLDivElement>("myStream");
   }
 
-  async connect(room: string) {
+  async connect(room: string, config: any) {
     // note: IConnectOptions is not correctly typed, so we must use any
     const connectOptions: any = {
-      bosh: "https://localhost:8443//http-bind",
-      hosts: {
-        domain: "meet.jitsi",
-        muc: "muc.meet.jitsi"
-      },
-      serviceUrl: `wss://localhost:8443//xmpp-websocket?room=${room}`,
-      websocket: "wss://localhost:8443//xmpp-websocket",
-      websocketKeepAliveUrl: `https://localhost:8443//_unlock?room=${room}`,
-      p2p: {
-        enabled: false,
-      }
+      bosh: config.bosh,
+      hosts: config.hosts,
+      serviceUrl: `${config.websocket}?room=${room}`,
+      websocket: config.websocket,
+      p2p: config.p2p
     };
 
     console.log(`connection options: ${JSON.stringify(connectOptions, null, 2)}`)
@@ -251,25 +245,28 @@ const VIDEO_RADIO_INPUT_NAME: string = "videoSelect";
  */
 class Inputs {
   roomInput: HTMLInputElement;
+  baseUrlInput: HTMLInputElement;
+
+  // TODO: enable/disable based on state
   initButton: HTMLButtonElement;
   joinButton: HTMLButtonElement;
   leaveButton: HTMLButtonElement;
+
   videoSelector: HTMLDivElement;
 
   constructor() {
-    this.roomInput = getElement<HTMLInputElement>("roomText");
+    this.roomInput = getElement<HTMLInputElement>("room");
+    this.baseUrlInput = getElement<HTMLInputElement>("baseUrl");
     this.joinButton = getElement<HTMLButtonElement>("joinBtn");
     this.leaveButton = getElement<HTMLButtonElement>("leaveBtn");
     this.initButton = getElement<HTMLButtonElement>("initBtn");
     this.videoSelector = getElement<HTMLDivElement>("videoSelector");
-
-    this.populateVideoSelector();
   }
 
   /**
    * Gets the current room name from the input element or the default
    */
-  getRoomInput(): string {
+  getRoom(): string {
     const room = this.roomInput.value.trim();
     if (room.length == 0) {
       return DEFAULT_ROOM_NAME
@@ -280,8 +277,8 @@ class Inputs {
 
   async populateVideoSelector() {
     // clear old devices
-    document.querySelectorAll("#" + VIDEO_RADIO_CLASS).forEach((elem, _key, parent) => {
-      parent.item(0).removeChild(elem);
+    document.querySelectorAll("." + VIDEO_RADIO_CLASS).forEach((elem) => {
+      this.videoSelector.removeChild(elem);
     })
 
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -290,6 +287,10 @@ class Inputs {
 
     for (const device of devices) {
       if (device.kind != "videoinput") {
+        continue;
+      }
+
+      if (device.deviceId === "") {
         continue;
       }
 
@@ -325,24 +326,80 @@ class Inputs {
     }
 
     return null;
+  }
 
+  getBaseUrl(): string {
+    let baseUrl = this.baseUrlInput.value;
+    if (!baseUrl || baseUrl == "") {
+      baseUrl = window.location.host
+    }
+    return baseUrl;
   }
 }
 
-window.onload = () => {
-  JitsiMeetJS.init();
-  console.log(`using LJM version ${JitsiMeetJS.version}!`);
+/**
+ * Load config.js from `baseUrl` and return the `config` object.
+ *
+ * Required since jitsi's config.js does not export anything by default
+ * (it's meant to be used in a HTML <script> element).
+ */
+async function getConfig(baseUrl: string): Promise<any> {
+  let response = await fetch(`https://${baseUrl}/config.js`);
+  if (!response.body) {
+    throw new Error("config.js had no body");
+  }
+
+  let configJsBlob = await response.blob();
+
+  let blob = new Blob(
+    [
+      configJsBlob,
+      // export the damn object
+      "export default config;"
+    ],
+    { type: "application/javascript" }
+  );
+
+  let url = URL.createObjectURL(blob);
+
+  const { default: config } = await import(/* webpackIgnore: true */ url);
+
+  console.group("dynamically imported config");
+  console.dir(config);
+  console.groupEnd();
+
+  return config;
+};
+
+window.onload = async () => {
 
   const jitsi = new Jitsi();
   const inputs = new Inputs();
+  // dynamically imported
+  let config: any;
+
+  // ask user for device permission
+  await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  inputs.populateVideoSelector();
 
   inputs.initButton.onclick = async () => {
+    // TODO: figure out webpack externals?
+
+    // import and inject into global scope
+    await import(/* webpackIgnore: true */ `https://${inputs.getBaseUrl()}/libs/lib-jitsi-meet.min.js`);
+
+    // grab the config
+    config = await getConfig(inputs.getBaseUrl());
+
+    JitsiMeetJS.init();
+    console.log(`using LJM version ${JitsiMeetJS.version}!`);
+
     const targetVideo = inputs.getVideo();
     await jitsi.updateLocalTracks(targetVideo);
   }
 
   inputs.joinButton.onclick = async () => {
-    await jitsi.connect(inputs.getRoomInput());
+    await jitsi.connect(inputs.getRoom(), config);
   }
 
   inputs.leaveButton.onclick = async () => {
