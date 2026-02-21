@@ -19,6 +19,8 @@ class Jitsi {
   tracks: Nullable<JitsiLocalTrack[]>;
   room: Nullable<string>;
   mediaDiv: HTMLDivElement;
+  myIdElem: HTMLDivElement;
+  myStreamElem: HTMLDivElement;
 
   constructor() {
     this.conference = null;
@@ -26,6 +28,8 @@ class Jitsi {
     this.tracks = null;
     this.room = null;
     this.mediaDiv = getElement<HTMLDivElement>("meeting-grid");
+    this.myIdElem = getElement<HTMLDivElement>("myId");
+    this.myStreamElem = getElement<HTMLDivElement>("myStream");
   }
 
   async connect(room: string) {
@@ -72,6 +76,15 @@ class Jitsi {
 
   async leave() {
     if (this.conference) {
+      // remove all nodes from mediaDiv
+      while (this.mediaDiv.firstChild) {
+        const child = this.mediaDiv.lastChild;
+        if (!child) { break };
+        this.mediaDiv.removeChild(child);
+      }
+
+      this.myIdElem.innerText = "";
+
       await this.conference.dispose();
     }
     if (this.connection) {
@@ -84,12 +97,18 @@ class Jitsi {
 
   async updateLocalTracks() {
     // TODO: call "audio" and "video" separately, otherwise it fails???
-    const localTracks = await JitsiMeetJS.createLocalTracks({ devices: ["video"] });
+    const localTracks = await JitsiMeetJS.createLocalTracks({ devices: ["video", "audio"] });
     if (localTracks instanceof Error) {
       throw new Error("unable to create tracks");
     }
-    //let trackNames = localTracks.map((track) => { track.getSourceName() });
-    console.log(`new tracks: ${JSON.stringify(localTracks)}`);
+
+    for (const track of localTracks) {
+      if (track.getType() === "video") {
+        this.myStreamElem.innerText = `${track.getTrack().label}`;
+      }
+    }
+
+    console.dir(localTracks)
     this.tracks = localTracks;
   }
 
@@ -97,13 +116,27 @@ class Jitsi {
   private handleTrackAdded = (track: JitsiRemoteTrack) => {
     console.log(`track added: ${track.getId()} of type ${track.getType()}`);
     if (track.getType() === "video") {
+      const containerNode = document.createElement("div");
+
+      const participantLabel = document.createElement("div");
+      const participantId = track.getParticipantId();
+      if (participantId === this.conference?.myUserId()) {
+        participantLabel.innerText = `${track.getParticipantId().toString()}(me)`;
+      } else {
+        participantLabel.innerText = track.getParticipantId().toString();
+      }
+
+      containerNode.appendChild(participantLabel)
+
       const videoNode = document.createElement("video");
 
       videoNode.id = track.getId();
       videoNode.className = "jitsiTrack col-4 p-1 border border-primary";
       videoNode.autoplay = true;
-      this.mediaDiv.appendChild(videoNode);
       track.attach(videoNode);
+      containerNode.appendChild(videoNode);
+
+      this.mediaDiv.appendChild(containerNode);
     } else if (!track.isLocal()) {
       const audioNode = document.createElement("audio");
 
@@ -147,9 +180,15 @@ class Jitsi {
 
     const conference = this.conference = this.connection.initJitsiConference(this.room, this.connection.options);
 
-    for (const track of this.tracks) {
-      await conference.addTrack(track);
-    }
+    this.myIdElem.innerText = `${conference.myUserId()}`;
+
+    // don't start with tracks muted?
+    conference.setStartMutedPolicy({ audio: false, video: false });
+
+    // must have some constraints!
+    conference.setReceiverConstraints({
+      defaultConstraints: { maxHeight: 720 }
+    });
 
     conference.on(
       JitsiMeetJS.events.conference.TRACK_ADDED,
@@ -171,6 +210,13 @@ class Jitsi {
       this.onUserLeft);
 
     console.log("conference handlers set");
+
+    // add local tracks
+    for (const track of this.tracks) {
+      await conference.addTrack(track);
+    }
+
+    console.log("local tracks added");
 
     conference.join();
   }
@@ -232,5 +278,4 @@ window.onload = () => {
   inputs.leaveButton.onclick = async () => {
     await jitsi.leave();
   }
-
 }

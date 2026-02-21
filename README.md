@@ -5,7 +5,7 @@ Voice (and video) channels using `lib-jitsi-meet`.
 **NOT READY FOR USAGE**
 - connects successfully to containerized Jitsi on localhost
 - audio works
-- video doesn't work
+- video works
 - no real UI
 
 ## Dev Setup
