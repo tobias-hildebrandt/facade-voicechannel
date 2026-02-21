@@ -117,11 +117,12 @@ class Jitsi {
     console.log(`track added: ${track.getId()} of type ${track.getType()}`);
     if (track.getType() === "video") {
       const containerNode = document.createElement("div");
+      containerNode.classList += "col-sm p-1 m-1 border border-primary";
 
       const participantLabel = document.createElement("div");
       const participantId = track.getParticipantId();
       if (participantId === this.conference?.myUserId()) {
-        participantLabel.innerText = `${track.getParticipantId().toString()}(me)`;
+        participantLabel.innerText = `${track.getParticipantId().toString()} (me)`;
       } else {
         participantLabel.innerText = track.getParticipantId().toString();
       }
@@ -131,7 +132,7 @@ class Jitsi {
       const videoNode = document.createElement("video");
 
       videoNode.id = track.getId();
-      videoNode.className = "jitsiTrack col-4 p-1 border border-primary";
+      videoNode.className = "jitsiTrack p-1 w-100 border border-primary";
       videoNode.autoplay = true;
       track.attach(videoNode);
       containerNode.appendChild(videoNode);

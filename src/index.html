@@ -21,26 +21,23 @@
 <body>
     <div class="container-fluid bg-dark p-3 px-5">
         <div class="row mb-3">
-            <div class="col">
-                <input type="text" class="form-control" id="roomText" placeholder="Room" aria-label="Room">
-            </div>
+            <input type="text" class="col form-control" id="roomText" placeholder="Room" aria-label="Room">
         </div>
         <div class="row mb-3">
-            <button type="button" class="col-1 btn btn-primary me-3" id="initBtn">Init</button>
-            <button type="button" class="col-1 btn btn-primary me-3" id="joinBtn">Join</button>
-            <button type="button" class="col-1 btn btn-primary me-3" id="leaveBtn">Leave</button>
+            <button type="button" class="col-sm btn btn-primary me-3" id="initBtn">Init</button>
+            <button type="button" class="col-sm btn btn-primary me-3" id="joinBtn">Join</button>
+            <button type="button" class="col-sm btn btn-primary me-3" id="leaveBtn">Leave</button>
         </div>
-        <div class="row mb-3">
-            <div class="text-primary col-2 d-inline-flex">
+        <div class="d-inline-flex">
+            <div class="text-primary me-3 d-inline-flex">
                 <div>Participant Id: </div>
                 <div id="myId"></div>
             </div>
-            <div class="text-primary col-2 d-inline-flex">
+            <div class="text-primary me-3 d-inline-flex">
                 <div>Video Stream: </div>
                 <div id="myStream"></div>
             </div>
         </div>
-
     </div>
     <div class="container-fluid">
         <div id="meeting-grid" class="row"></div>
