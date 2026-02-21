@@ -95,9 +95,16 @@ class Jitsi {
     this.connection = null;
   }
 
-  async updateLocalTracks() {
-    // TODO: call "audio" and "video" separately, otherwise it fails???
-    const localTracks = await JitsiMeetJS.createLocalTracks({ devices: ["video", "audio"] });
+  async updateLocalTracks(targetVideo: Nullable<string>) {
+    // ljm does not export ICreateLocalTrackOptions
+    const localTrackOptions: any = {
+      devices: ["video", "audio"]
+    };
+    if (targetVideo) {
+      localTrackOptions.cameraDeviceId = targetVideo;
+    }
+
+    const localTracks = await JitsiMeetJS.createLocalTracks(localTrackOptions);
     if (localTracks instanceof Error) {
       throw new Error("unable to create tracks");
     }
@@ -231,6 +238,8 @@ class Jitsi {
   };
 }
 
+const VIDEO_RADIO_CLASS: string = "videoRadio";
+const VIDEO_RADIO_INPUT_NAME: string = "videoSelect";
 
 /**
  * Input elements.
@@ -240,12 +249,16 @@ class Inputs {
   initButton: HTMLButtonElement;
   joinButton: HTMLButtonElement;
   leaveButton: HTMLButtonElement;
+  videoSelector: HTMLDivElement;
 
   constructor() {
     this.roomInput = getElement<HTMLInputElement>("roomText");
     this.joinButton = getElement<HTMLButtonElement>("joinBtn");
     this.leaveButton = getElement<HTMLButtonElement>("leaveBtn");
     this.initButton = getElement<HTMLButtonElement>("initBtn");
+    this.videoSelector = getElement<HTMLDivElement>("videoSelector");
+
+    this.populateVideoSelector();
   }
 
   /**
@@ -259,17 +272,68 @@ class Inputs {
       return room;
     }
   }
+
+  async populateVideoSelector() {
+    // clear old devices
+    document.querySelectorAll("#" + VIDEO_RADIO_CLASS).forEach((elem, _key, parent) => {
+      parent.item(0).removeChild(elem);
+    })
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    // sort by label
+    devices.sort((a, b) => { if (a.label > b.label) { return 1 } else { return -1 } });
+
+    for (const device of devices) {
+      if (device.kind != "videoinput") {
+        continue;
+      }
+
+      const formCheck = document.createElement("div");
+      formCheck.className = "form-check col-1 " + VIDEO_RADIO_CLASS;
+
+      const input = document.createElement("input");
+      input.className = "form-check-input";
+      input.type = "radio";
+      input.name = VIDEO_RADIO_INPUT_NAME;
+      input.id = `radio${device.deviceId}`;
+      input.value = device.deviceId;
+
+      const label = document.createElement("label");
+      label.className = "form-check-label text-primary";
+      label.htmlFor = `radio${device.deviceId}`;
+      label.innerText = device.label;
+
+      formCheck.appendChild(input);
+      formCheck.appendChild(label);
+
+      this.videoSelector.appendChild(formCheck);
+    }
+  }
+
+  getVideo(): Nullable<string> {
+    const inputs = document.querySelectorAll<HTMLInputElement>(`.form-check-input:checked[name="${VIDEO_RADIO_INPUT_NAME}"]`);
+
+    for (const input of Array.from(inputs)) {
+      if (input.checked) {
+        return input.value;
+      }
+    }
+
+    return null;
+
+  }
 }
 
 window.onload = () => {
   JitsiMeetJS.init();
   console.log(`using LJM version ${JitsiMeetJS.version}!`);
 
-  let jitsi = new Jitsi();
-  let inputs = new Inputs();
+  const jitsi = new Jitsi();
+  const inputs = new Inputs();
 
   inputs.initButton.onclick = async () => {
-    await jitsi.updateLocalTracks();
+    const targetVideo = inputs.getVideo();
+    await jitsi.updateLocalTracks(targetVideo);
   }
 
   inputs.joinButton.onclick = async () => {

@@ -23,6 +23,13 @@
         <div class="row mb-3">
             <input type="text" class="col form-control" id="roomText" placeholder="Room" aria-label="Room">
         </div>
+        <div class="row mb-3" id="videoSelector">
+            <div class="col-1 text-primary">Video Input:</div>
+            <div class="form-check col-1">
+                <input class="form-check-input" type="radio" name="videoSelect" id="radioAuto" checked>
+                <label class="form-check-label text-primary" for="radioAuto">(auto)</label>
+            </div>
+        </div>
         <div class="row mb-3">
             <button type="button" class="col-sm btn btn-primary me-3" id="initBtn">Init</button>
             <button type="button" class="col-sm btn btn-primary me-3" id="joinBtn">Join</button>
@@ -30,12 +37,12 @@
         </div>
         <div class="d-inline-flex">
             <div class="text-primary me-3 d-inline-flex">
-                <div>Participant Id: </div>
-                <div id="myId"></div>
-            </div>
-            <div class="text-primary me-3 d-inline-flex">
                 <div>Video Stream: </div>
                 <div id="myStream"></div>
+            </div>
+            <div class="text-primary me-3 d-inline-flex">
+                <div>Participant Id: </div>
+                <div id="myId"></div>
             </div>
         </div>
     </div>
