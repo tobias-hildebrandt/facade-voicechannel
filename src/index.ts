@@ -157,8 +157,13 @@ class Jitsi {
   };
 
   private handleTrackRemoved: EventListener = (track: JitsiRemoteTrack) => {
+    const htmlElement = document.getElementById(track.getId());
     track.dispose();
-    document.getElementById(track.getId())?.remove();
+    if (track.isVideoTrack()) {
+      htmlElement?.parentElement?.remove();
+    } else {
+      htmlElement?.remove();
+    }
   };
 
   private onConferenceJoined: EventListener = () => {
