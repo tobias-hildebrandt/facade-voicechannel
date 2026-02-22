@@ -42,7 +42,7 @@ class Jitsi {
       p2p: config.p2p
     };
 
-    console.log(`connection options: ${JSON.stringify(connectOptions, null, 2)}`)
+    console.log("connection options:", connectOptions);
 
     const connection = this.connection = new JitsiMeetJS.JitsiConnection(
       // TODO: figure out how appId works
@@ -109,13 +109,13 @@ class Jitsi {
       }
     }
 
-    console.dir(localTracks)
+    console.log("localTracks:", localTracks);
     this.tracks = localTracks;
   }
 
 
   private handleTrackAdded = (track: JitsiRemoteTrack) => {
-    console.log(`track added: ${track.getId()} of type ${track.getType()}`);
+    console.log("track added:", track);
     if (track.getType() === "video") {
       const containerNode = document.createElement("div");
       containerNode.classList += "col-sm p-1 m-1 border border-primary";
@@ -357,9 +357,7 @@ async function loadConfig(baseUrl: string): Promise<void> {
     document.body.appendChild(scriptElem);
   });
 
-  console.group("dynamically imported config");
-  console.dir(config);
-  console.groupEnd();
+  console.log("config:", config);
 };
 
 window.onload = async () => {
