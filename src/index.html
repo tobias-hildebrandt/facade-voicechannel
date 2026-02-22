@@ -20,7 +20,8 @@
     <div class="container-fluid bg-dark p-3 px-5">
         <div class="row mb-3">
             <input type="text" class="col form-control" id="room" placeholder="room" aria-label="room">
-            <input type="text" class="col form-control" id="baseUrl" placeholder="baseUrl" aria-label="baseUrl">
+            <input type="text" class="col form-control" id="baseUrl" placeholder="baseUrl" aria-label="baseUrl"
+                value="localhost:8443">
         </div>
         <div class="row mb-3" id="videoSelector">
             <div class="col-1 text-primary">Video Input:</div>
@@ -50,7 +51,7 @@
     </div>
 
     <!-- load frontend bundle -->
-    <script type="module" src="/static/test/bundle.js"></script>
+    <script type="module" src="/bundle.js"></script>
 </body>
 
 </html>

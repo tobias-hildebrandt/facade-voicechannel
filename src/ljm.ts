@@ -12,4 +12,7 @@ declare global {
 
   // global variable
   var JitsiMeetJS: JitsiMeetJS;
+
+  // global variable from config.js
+  var config: any;
 }

@@ -6,7 +6,7 @@ Voice (and video) channels using `lib-jitsi-meet`.
 - connects successfully to containerized Jitsi on localhost
 - audio works
 - video works
-- no real UI
+- test UI implemented, but channel-like UI not implemented
 
 ## Dev Setup
 ### Install podman/docker and docker-compose
@@ -28,17 +28,6 @@ JVB_ADVERTISE_IPS=127.0.0.1
 CONFIG=../jitsi-meet-cfg
 ```
 
-### Bind Facade's ./dist/ as a volume in jitsi-web container
-- Link `dist`:
-  - `ln -s $PWD/dist <your custom cfg dir>/test`
-- In `docker-compose.yml`, merge:
-```yml
-services:
-    web:
-        volumes:
-            <path_to_here>/facade-voicechannel/dist/:/usr/share/jitsi-meet/static/test/:Z
-```
-
 ### Jitsi container startup/shutdown
 - To start: `podman compose up --detach --force-recreate`
 - To shutdown: `podman compose down`
@@ -51,9 +40,8 @@ services:
 - Try to join same call
 
 ## Build and Run
-- `npm run build`
-- Restart Jitsi container (if `dist/` was deleted and re-made)
-- Navigate to https://localhost:8443/static/test
+- `npm run serve`
+- Navigate to https://localhost:8081
 
 ## License
 AGPLv3+

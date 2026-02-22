@@ -338,45 +338,34 @@ class Inputs {
 }
 
 /**
- * Load config.js from `baseUrl` and return the `config` object.
- *
- * Required since jitsi's config.js does not export anything by default
- * (it's meant to be used in a HTML <script> element).
+ * Load config.js from `baseUrl`, which sets the global `config` object.
  */
-async function getConfig(baseUrl: string): Promise<any> {
-  let response = await fetch(`https://${baseUrl}/config.js`);
-  if (!response.body) {
-    throw new Error("config.js had no body");
+async function loadConfig(baseUrl: string): Promise<void> {
+  const CONFIG_ELEM_ID: string = "dynamicallyLoadedConfig";
+
+  const old = document.querySelector(`#${CONFIG_ELEM_ID}`);
+  if (old) {
+    document.body.removeChild(old);
   }
 
-  let configJsBlob = await response.blob();
+  await new Promise((resolve, _reject) => {
+    let scriptElem = document.createElement("script");
+    scriptElem.src = `https://${baseUrl}/config.js`;
+    scriptElem.onload = resolve;
+    scriptElem.id = CONFIG_ELEM_ID;
 
-  let blob = new Blob(
-    [
-      configJsBlob,
-      // export the damn object
-      "export default config;"
-    ],
-    { type: "application/javascript" }
-  );
-
-  let url = URL.createObjectURL(blob);
-
-  const { default: config } = await import(/* webpackIgnore: true */ url);
+    document.body.appendChild(scriptElem);
+  });
 
   console.group("dynamically imported config");
   console.dir(config);
   console.groupEnd();
-
-  return config;
 };
 
 window.onload = async () => {
 
   const jitsi = new Jitsi();
   const inputs = new Inputs();
-  // dynamically imported
-  let config: any;
 
   // ask user for device permission
   await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -389,7 +378,7 @@ window.onload = async () => {
     await import(/* webpackIgnore: true */ `https://${inputs.getBaseUrl()}/libs/lib-jitsi-meet.min.js`);
 
     // grab the config
-    config = await getConfig(inputs.getBaseUrl());
+    await loadConfig(inputs.getBaseUrl());
 
     JitsiMeetJS.init();
     console.log(`using LJM version ${JitsiMeetJS.version}!`);
