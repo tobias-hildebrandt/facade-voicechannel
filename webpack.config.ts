@@ -30,5 +30,13 @@ export default {
             template: "./src/index.html",
             minify: "auto"
         })],
+    devServer: {
+        client: {
+            overlay: false,
+        },
+        server: {
+            type: "https",
+        }
+    }
     // TODO: figure out externals
 };

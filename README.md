@@ -41,7 +41,7 @@ CONFIG=../jitsi-meet-cfg
 
 ## Build and Run
 - `npm run serve`
-- Navigate to https://localhost:8081
+- Navigate to https://localhost:8080
 
 ## License
 AGPLv3+
